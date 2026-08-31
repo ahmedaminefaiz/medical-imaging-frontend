@@ -8,8 +8,20 @@ export const routes: Routes = [
   },
   {
     path: '',
-    loadComponent: () => import('./features/home/pages/home/home').then((m) => m.Home),
+    loadComponent: () => import('./layout/protected-layout').then((m) => m.ProtectedLayout),
     canActivate: [authGuard],
+    children: [
+      {
+        path: '',
+        loadComponent: () =>
+          import('./features/examens/pages/liste/examens-liste').then((m) => m.ExamensListe),
+      },
+      {
+        path: 'examens/:id',
+        loadComponent: () =>
+          import('./features/examens/pages/detail/examen-detail').then((m) => m.ExamenDetail),
+      },
+    ],
   },
   { path: '**', redirectTo: 'login' },
 ];
