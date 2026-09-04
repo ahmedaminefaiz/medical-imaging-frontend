@@ -1,44 +1,30 @@
-import { Component, OnDestroy, OnInit, inject, input, signal } from '@angular/core';
+import { Component, OnInit, Signal, inject, input, output } from '@angular/core';
 import { ExamenImage } from '../../models/examen.model';
-import { ExamenService } from '../../services/examen.service';
+import { ApercuEntree, ExamenImageApercuStore } from '../../services/examen-image-apercu-store.service';
 
 @Component({
   selector: 'app-examen-image-apercu',
   imports: [],
   templateUrl: './examen-image-apercu.html',
 })
-export class ExamenImageApercu implements OnInit, OnDestroy {
-  private readonly examenService = inject(ExamenService);
+export class ExamenImageApercu implements OnInit {
+  private readonly store = inject(ExamenImageApercuStore);
 
   readonly examenId = input.required<number>();
   readonly image = input.required<ExamenImage>();
+  readonly ouvrir = output<void>();
 
-  protected readonly objectUrl = signal<string | null>(null);
-  protected readonly loading = signal(true);
-  protected readonly error = signal(false);
+  protected entree!: Signal<ApercuEntree | undefined>;
 
   ngOnInit(): void {
-    if (!this.image().apercuDisponible) {
-      this.loading.set(false);
-      return;
-    }
-
-    this.examenService.apercu(this.examenId(), this.image().imageId).subscribe({
-      next: (blob) => {
-        this.objectUrl.set(URL.createObjectURL(blob));
-        this.loading.set(false);
-      },
-      error: () => {
-        this.loading.set(false);
-        this.error.set(true);
-      },
-    });
+    this.store.charger(this.examenId(), this.image());
+    this.entree = this.store.entree(this.image().imageId);
   }
 
-  ngOnDestroy(): void {
-    const url = this.objectUrl();
-    if (url) {
-      URL.revokeObjectURL(url);
+  protected onClick(): void {
+    const e = this.entree();
+    if (this.image().apercuDisponible && e && !e.loading && !e.error) {
+      this.ouvrir.emit();
     }
   }
 }

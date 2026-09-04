@@ -1,0 +1,94 @@
+<div
+  class="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+  role="dialog"
+  aria-modal="true"
+  (click)="onFermer()"
+>
+  <button
+    type="button"
+    (click)="onArretPropagation($event); onFermer()"
+    class="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-2xl leading-none text-white hover:bg-white/20"
+    aria-label="Fermer"
+  >
+    ✕
+  </button>
+
+  <div class="absolute left-4 top-4 text-sm text-white/80">
+    {{ position() }}
+  </div>
+
+  <button
+    type="button"
+    (click)="onArretPropagation($event); onPrecedent()"
+    [disabled]="indexPrecedentOuvrable() === null"
+    class="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-3 text-2xl leading-none text-white hover:bg-white/20 disabled:opacity-30 disabled:hover:bg-white/10"
+    aria-label="Image précédente"
+  >
+    ‹
+  </button>
+
+  <button
+    type="button"
+    (click)="onArretPropagation($event); onSuivant()"
+    [disabled]="indexSuivantOuvrable() === null"
+    class="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-3 text-2xl leading-none text-white hover:bg-white/20 disabled:opacity-30 disabled:hover:bg-white/10"
+    aria-label="Image suivante"
+  >
+    ›
+  </button>
+
+  <div
+    #conteneurImage
+    class="flex h-full max-h-[80vh] w-full max-w-[80vw] items-center justify-center overflow-hidden"
+    (click)="onArretPropagation($event)"
+    (wheel)="onWheel($event)"
+    (mousedown)="onPointerDown($event)"
+  >
+    @let e = entreeCourante();
+    @if (e && !e.loading && !e.error) {
+      <img
+        [src]="e.objectUrl"
+        [alt]="'Image ' + imageCourante().imageId"
+        [style.transform]="transformStyle()"
+        [style.cursor]="niveauZoom() > 1 ? 'grab' : 'default'"
+        class="max-h-full max-w-full select-none object-contain"
+      />
+    } @else if (e?.error) {
+      <p class="text-sm text-red-400">Erreur de chargement</p>
+    } @else {
+      <p class="text-sm text-white/60">Chargement…</p>
+    }
+  </div>
+
+  <div
+    class="absolute bottom-4 flex items-center gap-3 rounded-md bg-white/10 px-4 py-2"
+    (click)="onArretPropagation($event)"
+  >
+    <button
+      type="button"
+      (click)="onZoomOut()"
+      [disabled]="niveauZoom() <= 1"
+      class="rounded-md px-3 py-1 text-lg text-white hover:bg-white/20 disabled:opacity-30"
+      aria-label="Dézoomer"
+    >
+      −
+    </button>
+    <span class="w-12 text-center text-sm text-white">{{ zoomPourcentage() }}%</span>
+    <button
+      type="button"
+      (click)="onZoomIn()"
+      [disabled]="niveauZoom() >= 5"
+      class="rounded-md px-3 py-1 text-lg text-white hover:bg-white/20 disabled:opacity-30"
+      aria-label="Zoomer"
+    >
+      +
+    </button>
+    <button
+      type="button"
+      (click)="onReset()"
+      class="rounded-md px-3 py-1 text-sm text-white hover:bg-white/20"
+    >
+      Réinitialiser
+    </button>
+  </div>
+</div>

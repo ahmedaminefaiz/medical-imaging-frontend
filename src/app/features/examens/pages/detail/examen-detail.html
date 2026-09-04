@@ -63,10 +63,19 @@
       <p class="text-sm text-slate-500">Aucune image pour cet examen.</p>
     } @else {
       <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
-        @for (image of ex.images; track image.imageId) {
-          <app-examen-image-apercu [examenId]="ex.examenId" [image]="image" />
+        @for (image of ex.images; track image.imageId; let i = $index) {
+          <app-examen-image-apercu [examenId]="ex.examenId" [image]="image" (ouvrir)="onOuvrirImage(i)" />
         }
       </div>
+    }
+
+    @if (imageOuverteIndex() !== null) {
+      <app-examen-image-viewer
+        [examenId]="ex.examenId"
+        [images]="ex.images"
+        [indexInitial]="imageOuverteIndex()!"
+        (fermer)="onFermerViewer()"
+      />
     }
   }
 </div>

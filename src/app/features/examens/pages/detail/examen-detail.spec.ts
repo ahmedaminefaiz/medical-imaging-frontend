@@ -1,8 +1,10 @@
 import { HttpErrorResponse } from '@angular/common/http';
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { ExamenDetail as ExamenDetailModel } from '../../models/examen.model';
+import { ExamenImageApercuStore } from '../../services/examen-image-apercu-store.service';
 import { ExamenService } from '../../services/examen.service';
 import { ExamenDetail } from './examen-detail';
 
@@ -16,12 +18,17 @@ const EXAMEN: ExamenDetailModel = {
   images: [{ imageId: 1, format: 'PNG', apercuDisponible: true, ordre: 0 }],
 };
 
-function configure(id: string, examenService: Partial<ExamenService>) {
+function configure(
+  id: string,
+  examenService: Partial<ExamenService>,
+  apercuStore: Partial<ExamenImageApercuStore>
+) {
   return TestBed.configureTestingModule({
     imports: [ExamenDetail],
     providers: [
       provideRouter([]),
       { provide: ExamenService, useValue: examenService },
+      { provide: ExamenImageApercuStore, useValue: apercuStore },
       { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ id }) } } },
     ],
   }).compileComponents();
@@ -29,23 +36,29 @@ function configure(id: string, examenService: Partial<ExamenService>) {
 
 describe('ExamenDetail', () => {
   let examenService: Partial<ExamenService>;
+  let apercuStore: Partial<ExamenImageApercuStore>;
 
   beforeEach(() => {
     examenService = {
       detail: vi.fn().mockReturnValue(of(EXAMEN)),
       apercu: vi.fn().mockReturnValue(of(new Blob(['x']))),
     };
+    apercuStore = {
+      charger: vi.fn(),
+      entree: vi.fn().mockReturnValue(signal({ objectUrl: 'blob:fake-url', loading: false, error: false })),
+      clearAll: vi.fn(),
+    };
   });
 
   it('charge le détail avec l\'id numérique lu depuis la route', async () => {
-    await configure('1', examenService);
+    await configure('1', examenService, apercuStore);
     TestBed.createComponent(ExamenDetail).detectChanges();
 
     expect(examenService.detail).toHaveBeenCalledWith(1);
   });
 
   it('affiche les infos patient/examen et une tuile par image', async () => {
-    await configure('1', examenService);
+    await configure('1', examenService, apercuStore);
     const fixture = TestBed.createComponent(ExamenDetail);
     fixture.detectChanges();
 
@@ -57,7 +70,7 @@ describe('ExamenDetail', () => {
 
   it('affiche un message quand l\'examen n\'a aucune image', async () => {
     (examenService.detail as ReturnType<typeof vi.fn>).mockReturnValue(of({ ...EXAMEN, images: [] }));
-    await configure('1', examenService);
+    await configure('1', examenService, apercuStore);
     const fixture = TestBed.createComponent(ExamenDetail);
     fixture.detectChanges();
 
@@ -68,7 +81,7 @@ describe('ExamenDetail', () => {
     (examenService.detail as ReturnType<typeof vi.fn>).mockReturnValue(
       throwError(() => new HttpErrorResponse({ status: 404 }))
     );
-    await configure('1', examenService);
+    await configure('1', examenService, apercuStore);
     const fixture = TestBed.createComponent(ExamenDetail);
     fixture.detectChanges();
 
@@ -81,7 +94,7 @@ describe('ExamenDetail', () => {
     (examenService.detail as ReturnType<typeof vi.fn>).mockReturnValue(
       throwError(() => new HttpErrorResponse({ status: 500 }))
     );
-    await configure('1', examenService);
+    await configure('1', examenService, apercuStore);
     const fixture = TestBed.createComponent(ExamenDetail);
     fixture.detectChanges();
 
@@ -94,7 +107,7 @@ describe('ExamenDetail', () => {
   });
 
   it("traite un id non numérique comme 'not-found' sans appel réseau", async () => {
-    await configure('abc', examenService);
+    await configure('abc', examenService, apercuStore);
     const fixture = TestBed.createComponent(ExamenDetail);
     fixture.detectChanges();
 
@@ -103,7 +116,7 @@ describe('ExamenDetail', () => {
   });
 
   it('le bouton Retour à la liste navigue vers /', async () => {
-    await configure('1', examenService);
+    await configure('1', examenService, apercuStore);
     const fixture = TestBed.createComponent(ExamenDetail);
     const router = TestBed.inject(Router);
     const navigateSpy = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
@@ -112,5 +125,42 @@ describe('ExamenDetail', () => {
     fixture.componentInstance['onRetourListe']();
 
     expect(navigateSpy).toHaveBeenCalledWith('/');
+  });
+
+  it('le clic sur une tuile ouvre le viewer plein écran', async () => {
+    await configure('1', examenService, apercuStore);
+    const fixture = TestBed.createComponent(ExamenDetail);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('app-examen-image-viewer')).toBeNull();
+
+    fixture.nativeElement.querySelector('app-examen-image-apercu button').click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('app-examen-image-viewer')).not.toBeNull();
+  });
+
+  it('(fermer) émis par le viewer masque le viewer', async () => {
+    await configure('1', examenService, apercuStore);
+    const fixture = TestBed.createComponent(ExamenDetail);
+    fixture.detectChanges();
+
+    fixture.nativeElement.querySelector('app-examen-image-apercu button').click();
+    fixture.detectChanges();
+
+    fixture.nativeElement.querySelector('[aria-label="Fermer"]').click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('app-examen-image-viewer')).toBeNull();
+  });
+
+  it('la destruction du composant appelle ExamenImageApercuStore.clearAll()', async () => {
+    await configure('1', examenService, apercuStore);
+    const fixture = TestBed.createComponent(ExamenDetail);
+    fixture.detectChanges();
+
+    fixture.destroy();
+
+    expect(apercuStore.clearAll).toHaveBeenCalled();
   });
 });
