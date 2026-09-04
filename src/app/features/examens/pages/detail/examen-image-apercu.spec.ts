@@ -1,33 +1,28 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { of, throwError } from 'rxjs';
 import { ExamenImage } from '../../models/examen.model';
-import { ExamenService } from '../../services/examen.service';
+import { ApercuEntree, ExamenImageApercuStore } from '../../services/examen-image-apercu-store.service';
 import { ExamenImageApercu } from './examen-image-apercu';
 
 const IMAGE_DISPONIBLE: ExamenImage = { imageId: 1, format: 'PNG', apercuDisponible: true, ordre: 0 };
 const IMAGE_INDISPONIBLE: ExamenImage = { imageId: 2, format: 'DICOM', apercuDisponible: false, ordre: 1 };
 
 describe('ExamenImageApercu', () => {
-  let examenService: Partial<ExamenService>;
-  let createObjectURLSpy: ReturnType<typeof vi.fn>;
-  let revokeObjectURLSpy: ReturnType<typeof vi.fn>;
+  let store: Partial<ExamenImageApercuStore>;
 
-  beforeEach(async () => {
-    examenService = { apercu: vi.fn() };
+  function mockStore(entree: ApercuEntree | undefined): void {
+    store = {
+      charger: vi.fn(),
+      entree: vi.fn().mockReturnValue(signal(entree)),
+    };
+  }
 
-    createObjectURLSpy = vi.fn().mockReturnValue('blob:fake-url');
-    revokeObjectURLSpy = vi.fn();
-    vi.stubGlobal('URL', { ...URL, createObjectURL: createObjectURLSpy, revokeObjectURL: revokeObjectURLSpy });
-
+  async function createComponent(image: ExamenImage) {
     await TestBed.configureTestingModule({
       imports: [ExamenImageApercu],
-      providers: [{ provide: ExamenService, useValue: examenService }],
+      providers: [{ provide: ExamenImageApercuStore, useValue: store }],
     }).compileComponents();
-  });
 
-  afterEach(() => vi.unstubAllGlobals());
-
-  function createComponent(image: ExamenImage) {
     const fixture = TestBed.createComponent(ExamenImageApercu);
     fixture.componentRef.setInput('examenId', 10);
     fixture.componentRef.setInput('image', image);
@@ -35,37 +30,108 @@ describe('ExamenImageApercu', () => {
     return fixture;
   }
 
-  it('charge un aperçu disponible et crée une URL objet', () => {
-    (examenService.apercu as ReturnType<typeof vi.fn>).mockReturnValue(of(new Blob(['x'])));
+  it('délègue le chargement au store lors de ngOnInit', async () => {
+    mockStore({ objectUrl: 'blob:fake-url', loading: false, error: false });
 
-    const fixture = createComponent(IMAGE_DISPONIBLE);
+    await createComponent(IMAGE_DISPONIBLE);
 
-    expect(examenService.apercu).toHaveBeenCalledWith(10, 1);
-    expect(fixture.componentInstance['objectUrl']()).toBe('blob:fake-url');
-    expect(fixture.componentInstance['error']()).toBe(false);
+    expect(store.charger).toHaveBeenCalledWith(10, IMAGE_DISPONIBLE);
   });
 
-  it("n'appelle pas l'endpoint gardien quand apercuDisponible est false", () => {
-    createComponent(IMAGE_INDISPONIBLE);
+  it("affiche l'image quand le store expose un aperçu chargé avec succès", async () => {
+    mockStore({ objectUrl: 'blob:fake-url', loading: false, error: false });
 
-    expect(examenService.apercu).not.toHaveBeenCalled();
+    const fixture = await createComponent(IMAGE_DISPONIBLE);
+
+    const img = fixture.nativeElement.querySelector('img');
+    expect(img?.getAttribute('src')).toBe('blob:fake-url');
   });
 
-  it("affiche une erreur en cas d'échec de l'endpoint gardien", () => {
-    (examenService.apercu as ReturnType<typeof vi.fn>).mockReturnValue(throwError(() => new Error('boom')));
+  it("affiche 'Chargement…' pendant que le store charge l'aperçu", async () => {
+    mockStore({ objectUrl: null, loading: true, error: false });
 
-    const fixture = createComponent(IMAGE_DISPONIBLE);
+    const fixture = await createComponent(IMAGE_DISPONIBLE);
 
-    expect(fixture.componentInstance['error']()).toBe(true);
-    expect(fixture.componentInstance['loading']()).toBe(false);
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Chargement…');
   });
 
-  it("révoque l'URL objet à la destruction du composant", () => {
-    (examenService.apercu as ReturnType<typeof vi.fn>).mockReturnValue(of(new Blob(['x'])));
+  it("affiche 'Aperçu indisponible' sans appeler le store quand apercuDisponible est false", async () => {
+    mockStore(undefined);
 
-    const fixture = createComponent(IMAGE_DISPONIBLE);
-    fixture.destroy();
+    const fixture = await createComponent(IMAGE_INDISPONIBLE);
 
-    expect(revokeObjectURLSpy).toHaveBeenCalledWith('blob:fake-url');
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Aperçu indisponible');
+  });
+
+  it("affiche une erreur quand le store expose error: true", async () => {
+    mockStore({ objectUrl: null, loading: false, error: true });
+
+    const fixture = await createComponent(IMAGE_DISPONIBLE);
+
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Erreur de chargement');
+  });
+
+  it("le wrapper est un <button> uniquement quand l'image est ouvrable", async () => {
+    mockStore({ objectUrl: 'blob:fake-url', loading: false, error: false });
+
+    const fixture = await createComponent(IMAGE_DISPONIBLE);
+
+    expect(fixture.nativeElement.querySelector('button')).not.toBeNull();
+  });
+
+  it("le wrapper reste un <div> quand l'image n'est pas ouvrable", async () => {
+    mockStore(undefined);
+
+    const fixture = await createComponent(IMAGE_INDISPONIBLE);
+
+    expect(fixture.nativeElement.querySelector('button')).toBeNull();
+  });
+
+  it("émet ouvrir au clic quand l'image est ouvrable", async () => {
+    mockStore({ objectUrl: 'blob:fake-url', loading: false, error: false });
+
+    const fixture = await createComponent(IMAGE_DISPONIBLE);
+    const emitSpy = vi.fn();
+    fixture.componentInstance.ouvrir.subscribe(emitSpy);
+
+    fixture.nativeElement.querySelector('button')!.click();
+
+    expect(emitSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("n'émet pas ouvrir quand apercuDisponible est false", async () => {
+    mockStore(undefined);
+
+    const fixture = await createComponent(IMAGE_INDISPONIBLE);
+    const emitSpy = vi.fn();
+    fixture.componentInstance.ouvrir.subscribe(emitSpy);
+
+    fixture.componentInstance['onClick']();
+
+    expect(emitSpy).not.toHaveBeenCalled();
+  });
+
+  it("n'émet pas ouvrir tant que le chargement est en cours", async () => {
+    mockStore({ objectUrl: null, loading: true, error: false });
+
+    const fixture = await createComponent(IMAGE_DISPONIBLE);
+    const emitSpy = vi.fn();
+    fixture.componentInstance.ouvrir.subscribe(emitSpy);
+
+    fixture.componentInstance['onClick']();
+
+    expect(emitSpy).not.toHaveBeenCalled();
+  });
+
+  it("n'émet pas ouvrir quand le store est en erreur", async () => {
+    mockStore({ objectUrl: null, loading: false, error: true });
+
+    const fixture = await createComponent(IMAGE_DISPONIBLE);
+    const emitSpy = vi.fn();
+    fixture.componentInstance.ouvrir.subscribe(emitSpy);
+
+    fixture.componentInstance['onClick']();
+
+    expect(emitSpy).not.toHaveBeenCalled();
   });
 });
