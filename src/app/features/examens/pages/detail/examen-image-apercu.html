@@ -1,0 +1,15 @@
+<div class="aspect-square overflow-hidden rounded-md border border-slate-200 bg-slate-50">
+  @if (loading()) {
+    <div class="flex h-full items-center justify-center text-xs text-slate-400">Chargement…</div>
+  } @else if (error()) {
+    <div class="flex h-full items-center justify-center text-center text-xs text-red-500">
+      Erreur de chargement
+    </div>
+  } @else if (!image().apercuDisponible) {
+    <div class="flex h-full items-center justify-center text-center text-xs text-slate-400">
+      Aperçu indisponible
+    </div>
+  } @else {
+    <img [src]="objectUrl()" [alt]="'Image ' + image().imageId" class="h-full w-full object-cover" />
+  }
+</div>

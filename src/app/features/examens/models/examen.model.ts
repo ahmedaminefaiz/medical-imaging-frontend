@@ -7,3 +7,28 @@ export interface ExamenSummary {
   modalite: string;
   nombreImages: number;
 }
+
+export interface Patient {
+  patientId: number;
+  mrn: string;
+  nom: string;
+  dateNaissance: string; // ISO "YYYY-MM-DD"
+  sexe: string;
+}
+
+export interface ExamenImage {
+  imageId: number;
+  format: string;
+  apercuDisponible: boolean;
+  ordre: number;
+}
+
+export interface ExamenDetail {
+  examenId: number;
+  patient: Patient;
+  type: string;
+  dateExamen: string; // ISO "YYYY-MM-DD"
+  modalite: string;
+  creePar: string;
+  images: ExamenImage[];
+}

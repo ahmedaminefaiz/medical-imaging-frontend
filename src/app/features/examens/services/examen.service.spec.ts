@@ -39,4 +39,21 @@ describe('ExamenService', () => {
     expect(req.request.params.get('mrn')).toBe('MRN-001');
     req.flush({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 0 });
   });
+
+  it('detail() appelle GET /v1/examens/{id}', () => {
+    service.detail(42).subscribe();
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/v1/examens/42`);
+    expect(req.request.method).toBe('GET');
+    req.flush({});
+  });
+
+  it('apercu() appelle GET .../images/{imageId}/apercu en blob', () => {
+    service.apercu(42, 7).subscribe();
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/v1/examens/42/images/7/apercu`);
+    expect(req.request.method).toBe('GET');
+    expect(req.request.responseType).toBe('blob');
+    req.flush(new Blob(['x']));
+  });
 });
