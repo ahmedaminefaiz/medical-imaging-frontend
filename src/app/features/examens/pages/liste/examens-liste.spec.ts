@@ -1,7 +1,10 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { PageResponse } from '../../../../shared/models/page-response.model';
+import { AuthService } from '../../../auth/services/auth.service';
+import { CurrentUser } from '../../../auth/models/auth.model';
 import { ExamenSummary } from '../../models/examen.model';
 import { ExamenService } from '../../services/examen.service';
 import { ExamensListe } from './examens-liste';
@@ -22,14 +25,22 @@ const EXAMEN: ExamenSummary = {
 
 describe('ExamensListe', () => {
   let examenService: Partial<ExamenService>;
+  let authService: Partial<AuthService>;
+  let currentUser: ReturnType<typeof signal<CurrentUser | null>>;
   let router: Router;
 
   beforeEach(async () => {
     examenService = { lister: vi.fn().mockReturnValue(of(pageOf([]))) };
+    currentUser = signal<CurrentUser | null>(null);
+    authService = { currentUser: currentUser as AuthService['currentUser'] };
 
     await TestBed.configureTestingModule({
       imports: [ExamensListe],
-      providers: [provideRouter([]), { provide: ExamenService, useValue: examenService }],
+      providers: [
+        provideRouter([]),
+        { provide: ExamenService, useValue: examenService },
+        { provide: AuthService, useValue: authService },
+      ],
     }).compileComponents();
     router = TestBed.inject(Router);
   });
@@ -86,6 +97,20 @@ describe('ExamensListe', () => {
     expect(examenService.lister).toHaveBeenLastCalledWith('MRN-001', 0, 20);
   });
 
+  it("soumettre le formulaire de recherche (submit natif du DOM) déclenche onSearch et empêche le rechargement de page", () => {
+    const fixture = TestBed.createComponent(ExamensListe);
+    fixture.detectChanges();
+
+    const input = fixture.nativeElement.querySelector('input[type="text"]') as HTMLInputElement;
+    input.value = 'MRN-001';
+    const form = fixture.nativeElement.querySelector('form') as HTMLFormElement;
+    const submitEvent = new Event('submit', { cancelable: true });
+    form.dispatchEvent(submitEvent);
+
+    expect(examenService.lister).toHaveBeenLastCalledWith('MRN-001', 0, 20);
+    expect(submitEvent.defaultPrevented).toBe(true);
+  });
+
   it('onNext/onPrevious respectent les bornes de pagination', () => {
     (examenService.lister as ReturnType<typeof vi.fn>).mockReturnValue(
       of(pageOf([EXAMEN], 0, 3))
@@ -111,5 +136,34 @@ describe('ExamensListe', () => {
     fixture.componentInstance['onRowClick'](EXAMEN.examenId);
 
     expect(navigateSpy).toHaveBeenCalledWith(['/examens', EXAMEN.examenId]);
+  });
+
+  it('affiche le bouton "+ Nouvel examen" pour un RADIOLOGUE', () => {
+    currentUser.set({ email: 'radio@test.com', role: 'RADIOLOGUE', exp: 9999999999 });
+
+    const fixture = TestBed.createComponent(ExamensListe);
+    fixture.detectChanges();
+
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('+ Nouvel examen');
+  });
+
+  it('masque le bouton "+ Nouvel examen" pour un ADMIN', () => {
+    currentUser.set({ email: 'admin@test.com', role: 'ADMIN', exp: 9999999999 });
+
+    const fixture = TestBed.createComponent(ExamensListe);
+    fixture.detectChanges();
+
+    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('+ Nouvel examen');
+  });
+
+  it('le clic sur "+ Nouvel examen" navigue vers /examens/nouveau', () => {
+    currentUser.set({ email: 'radio@test.com', role: 'RADIOLOGUE', exp: 9999999999 });
+    const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+
+    const fixture = TestBed.createComponent(ExamensListe);
+    fixture.detectChanges();
+    fixture.componentInstance['onNouvelExamen']();
+
+    expect(navigateSpy).toHaveBeenCalledWith(['/examens/nouveau']);
   });
 });

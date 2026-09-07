@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './features/auth/guards/auth.guard';
+import { roleGuard } from './features/auth/guards/role.guard';
 
 export const routes: Routes = [
   {
@@ -15,6 +16,13 @@ export const routes: Routes = [
         path: '',
         loadComponent: () =>
           import('./features/examens/pages/liste/examens-liste').then((m) => m.ExamensListe),
+      },
+      {
+        path: 'examens/nouveau',
+        loadComponent: () =>
+          import('./features/examens/pages/upload/examen-upload').then((m) => m.ExamenUpload),
+        canActivate: [roleGuard],
+        data: { roles: ['RADIOLOGUE', 'TECHNICIEN'] },
       },
       {
         path: 'examens/:id',

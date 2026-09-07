@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { PageResponse } from '../../../shared/models/page-response.model';
-import { ExamenDetail, ExamenSummary } from '../models/examen.model';
+import { ExamenDetail, ExamenSummary, ExamenUploadResult } from '../models/examen.model';
 
 @Injectable({ providedIn: 'root' })
 export class ExamenService {
@@ -25,5 +25,13 @@ export class ExamenService {
     return this.http.get(`${environment.apiUrl}/v1/examens/${examenId}/images/${imageId}/apercu`, {
       responseType: 'blob',
     });
+  }
+
+  uploadStandard(formData: FormData): Observable<ExamenUploadResult> {
+    return this.http.post<ExamenUploadResult>(`${environment.apiUrl}/v1/examens/upload/standard`, formData);
+  }
+
+  uploadDicom(formData: FormData): Observable<ExamenUploadResult> {
+    return this.http.post<ExamenUploadResult>(`${environment.apiUrl}/v1/examens/upload/dicom`, formData);
   }
 }

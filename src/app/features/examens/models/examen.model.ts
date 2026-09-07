@@ -32,3 +32,11 @@ export interface ExamenDetail {
   creePar: string;
   images: ExamenImage[];
 }
+
+export interface ExamenUploadResult {
+  examenId: number;
+  patientId: number;
+  mrn: string;
+  nombreImages: number;
+  images: ExamenImage[];
+}

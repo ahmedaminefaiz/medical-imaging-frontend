@@ -1,6 +1,7 @@
 import { DatePipe } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
+import { AuthService } from '../../../auth/services/auth.service';
 import { ExamenSummary } from '../../models/examen.model';
 import { ExamenService } from '../../services/examen.service';
 
@@ -11,6 +12,7 @@ import { ExamenService } from '../../services/examen.service';
 })
 export class ExamensListe implements OnInit {
   private readonly examenService = inject(ExamenService);
+  private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
 
   private readonly PAGE_SIZE = 20;
@@ -50,6 +52,15 @@ export class ExamensListe implements OnInit {
 
   protected onRowClick(examenId: number): void {
     this.router.navigate(['/examens', examenId]);
+  }
+
+  protected readonly peutUploader = computed(() => {
+    const role = this.authService.currentUser()?.role;
+    return role === 'RADIOLOGUE' || role === 'TECHNICIEN';
+  });
+
+  protected onNouvelExamen(): void {
+    this.router.navigate(['/examens/nouveau']);
   }
 
   private fetch(page: number): void {
