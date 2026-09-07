@@ -56,4 +56,26 @@ describe('ExamenService', () => {
     expect(req.request.responseType).toBe('blob');
     req.flush(new Blob(['x']));
   });
+
+  it('uploadStandard() appelle POST .../upload/standard avec le FormData tel quel', () => {
+    const formData = new FormData();
+    formData.append('mrn', 'MRN-001');
+    service.uploadStandard(formData).subscribe();
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/v1/examens/upload/standard`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toBe(formData);
+    req.flush({ examenId: 1, patientId: 1, mrn: 'MRN-001', nombreImages: 1, images: [] });
+  });
+
+  it('uploadDicom() appelle POST .../upload/dicom avec le FormData tel quel', () => {
+    const formData = new FormData();
+    formData.append('files', new Blob(['x']), 'a.dcm');
+    service.uploadDicom(formData).subscribe();
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/v1/examens/upload/dicom`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toBe(formData);
+    req.flush({ examenId: 2, patientId: 2, mrn: 'MRN-002', nombreImages: 1, images: [] });
+  });
 });

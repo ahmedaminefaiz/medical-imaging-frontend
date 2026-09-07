@@ -1,7 +1,18 @@
 <div class="mx-auto max-w-5xl px-6 py-8">
-  <h1 class="mb-6 text-xl font-semibold text-slate-900">Examens</h1>
+  <div class="mb-6 flex items-center justify-between">
+    <h1 class="text-xl font-semibold text-slate-900">Examens</h1>
+    @if (peutUploader()) {
+      <button
+        type="button"
+        (click)="onNouvelExamen()"
+        class="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+      >
+        + Nouvel examen
+      </button>
+    }
+  </div>
 
-  <form (ngSubmit)="onSearch(mrnInput.value)" class="mb-6 flex gap-2">
+  <form (submit)="$event.preventDefault(); onSearch(mrnInput.value)" class="mb-6 flex gap-2">
     <input
       #mrnInput
       type="text"
