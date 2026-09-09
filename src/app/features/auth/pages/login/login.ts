@@ -36,6 +36,15 @@ export class Login {
       },
       error: (err: HttpErrorResponse) => {
         this.loading.set(false);
+
+        // 429 (rate-limiting sur /auth/login) : ce n'est pas un problème
+        // d'identifiants, on ne vide donc pas le mot de passe et on affiche
+        // le message dédié plutôt que le message générique de panne serveur.
+        if (err.status === 429) {
+          this.errorMessage.set('Trop de tentatives, réessayez dans une minute.');
+          return;
+        }
+
         this.form.patchValue({ password: '' });
         this.errorMessage.set(
           err.status === 401
