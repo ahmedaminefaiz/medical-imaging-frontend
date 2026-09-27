@@ -56,4 +56,21 @@ describe('Login', () => {
 
     expect(component['errorMessage']()).toBe('Email ou mot de passe incorrect');
   });
+
+  it('affiche le message de rate-limiting sur une erreur 429 et garde le mot de passe', () => {
+    (authService.login as ReturnType<typeof vi.fn>).mockReturnValue(
+      throwError(() => new HttpErrorResponse({ status: 429 }))
+    );
+
+    const fixture = TestBed.createComponent(Login);
+    const component = fixture.componentInstance;
+    component['form'].setValue({ email: 'user@xeleronai.com', password: 'secret' });
+    fixture.detectChanges();
+
+    component['onSubmit']();
+    fixture.detectChanges();
+
+    expect(component['errorMessage']()).toBe('Trop de tentatives, réessayez dans une minute.');
+    expect(component['form'].getRawValue().password).toBe('secret');
+  });
 });
