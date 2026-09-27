@@ -57,6 +57,7 @@
             <th class="px-4 py-2 font-medium">Type</th>
             <th class="px-4 py-2 font-medium">Date d'examen</th>
             <th class="px-4 py-2 font-medium">Modalité</th>
+            <th class="px-4 py-2 font-medium">Zone</th>
             <th class="px-4 py-2 font-medium">Images</th>
           </tr>
         </thead>
@@ -73,6 +74,7 @@
               <td class="px-4 py-2">{{ examen.type }}</td>
               <td class="px-4 py-2">{{ examen.dateExamen | date: 'dd/MM/yyyy' }}</td>
               <td class="px-4 py-2">{{ examen.modalite }}</td>
+              <td class="px-4 py-2">{{ examen.zone }}</td>
               <td class="px-4 py-2">{{ examen.nombreImages }}</td>
             </tr>
           }

@@ -20,6 +20,7 @@ const EXAMEN: ExamenSummary = {
   type: 'Radio thorax',
   dateExamen: '2026-08-20',
   modalite: 'CR',
+  zone: 'THORAX',
   nombreImages: 2,
 };
 

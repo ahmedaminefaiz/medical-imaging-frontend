@@ -14,6 +14,7 @@ const EXAMEN: ExamenDetailModel = {
   type: 'Radio thorax',
   dateExamen: '2026-08-20',
   modalite: 'CR',
+  zone: 'THORAX',
   creePar: 'radiologue@xeleronai.com',
   images: [{ imageId: 1, format: 'PNG', apercuDisponible: true, ordre: 0 }],
 };

@@ -5,6 +5,7 @@ export interface ExamenSummary {
   type: string;
   dateExamen: string; // ISO "YYYY-MM-DD", formaté en JJ/MM/AAAA à l'affichage
   modalite: string;
+  zone: string;
   nombreImages: number;
 }
 
@@ -29,6 +30,7 @@ export interface ExamenDetail {
   type: string;
   dateExamen: string; // ISO "YYYY-MM-DD"
   modalite: string;
+  zone: string;
   creePar: string;
   images: ExamenImage[];
 }
