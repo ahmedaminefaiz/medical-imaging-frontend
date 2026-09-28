@@ -1,59 +1,51 @@
-# MedicalImagingFrontend
+# 🩻 Medical Imaging Frontend
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.2.2.
+> Web client of the **AI-Powered Medical Imaging Analysis & Automated Radiology Reporting Platform** — built during my AI Engineering internship at **XeleronAI Ltd** (London, remote).
 
-## Development server
+![Angular](https://img.shields.io/badge/Angular-21-DD0031?logo=angular&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-06B6D4?logo=tailwindcss&logoColor=white)
+![RxJS](https://img.shields.io/badge/RxJS-B7178C?logo=reactivex&logoColor=white)
 
-To start a local development server, run:
+Backend API: [medical-imaging-backend](https://github.com/ahmedaminefaiz/medical-imaging-backend)
 
-```bash
-ng serve
+---
+
+## ✨ Features
+
+- 🔐 **Login with JWT** — `AuthService`, HTTP interceptor, auth & role guards
+- 📋 **Exam list** — paginated, with patient **MRN search**
+- 📤 **Upload** — standard images or **DICOM**, including a **whole DICOM folder** at once
+- 🔎 **Exam detail** — patient / study info and image grid, images loaded as authenticated blobs (with proper object-URL cleanup)
+- 🖼️ **Full-screen viewer** with zoom & pan — tested on a real 150-slice CT series
+- 🤖 AI detection overlay (bounding boxes) & clinician validation — *in progress*
+
+## 🗂️ Project structure
+
+```
+src/app/
+├── features/
+│   ├── auth/       # login page, guards, interceptor, AuthService
+│   └── examens/    # list, upload, detail pages + services & models
+├── layout/         # shared app shell
+└── shared/         # shared models
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+Feature-based architecture with standalone components.
 
-## Code scaffolding
+## ▶️ Run locally
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
-
-```bash
-ng generate component component-name
-```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+**Prerequisites:** Node.js 20+, Angular CLI, the [backend](https://github.com/ahmedaminefaiz/medical-imaging-backend) running
 
 ```bash
-ng generate --help
+npm install
+ng serve          # http://localhost:4200
+ng test           # unit tests
+ng build          # production build → dist/
 ```
 
-## Building
+Set the API URL in `src/environments/`.
 
-To build the project run:
+---
 
-```bash
-ng build
-```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+👤 **Ahmed Amine Faiz** — AI Engineering student @ ENIAD Berkane · [GitHub](https://github.com/ahmedaminefaiz)
