@@ -14,7 +14,12 @@
   </button>
 
   <div class="absolute left-4 top-4 text-sm text-white/80">
-    {{ position() }}
+    <div>{{ position() }}</div>
+    @if (coupesAvecDetection().length > 0) {
+      <div class="text-xs text-white/60">
+        Coupes avec détection : {{ coupesAvecDetectionAffichage() }}
+      </div>
+    }
   </div>
 
   <button
@@ -46,13 +51,37 @@
   >
     @let e = entreeCourante();
     @if (e && !e.loading && !e.error) {
-      <img
-        [src]="e.objectUrl"
-        [alt]="'Image ' + imageCourante().imageId"
+      <div
         [style.transform]="transformStyle()"
         [style.cursor]="niveauZoom() > 1 ? 'grab' : 'default'"
-        class="max-h-full max-w-full select-none object-contain"
-      />
+        class="relative"
+      >
+        <img
+          [src]="e.objectUrl"
+          [alt]="'Image ' + imageCourante().imageId"
+          (load)="onImageChargee($any($event.target))"
+          class="block max-h-full max-w-full select-none object-contain"
+        />
+        @let dim = dimensionsImage();
+        @if (dim) {
+          @for (d of detectionsCoupeCourante(); track d.id) {
+            @if (d.bbox; as b) {
+              <div
+                class="absolute border-2 pointer-events-none"
+                [class]="classeStatut(d.statut)"
+                [style.left.%]="(b.x / dim.largeur) * 100"
+                [style.top.%]="(b.y / dim.hauteur) * 100"
+                [style.width.%]="(b.largeur / dim.largeur) * 100"
+                [style.height.%]="(b.hauteur / dim.hauteur) * 100"
+              >
+                <span class="absolute -top-5 left-0 whitespace-nowrap rounded bg-black/70 px-1 text-xs text-white">
+                  {{ d.anomalie }} {{ d.confiance | number: '1.0-2' }}
+                </span>
+              </div>
+            }
+          }
+        }
+      </div>
     } @else if (e?.error) {
       <p class="text-sm text-red-400">Erreur de chargement</p>
     } @else {

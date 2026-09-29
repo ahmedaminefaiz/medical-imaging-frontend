@@ -1,3 +1,4 @@
+import { DecimalPipe } from '@angular/common';
 import {
   Component,
   ElementRef,
@@ -10,12 +11,18 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { Detection, DetectionStatut } from '../../models/detection.model';
 import { ExamenImage } from '../../models/examen.model';
 import { ExamenImageApercuStore } from '../../services/examen-image-apercu-store.service';
 
 const ZOOM_MIN = 1;
 const ZOOM_MAX = 5;
 const ZOOM_STEP_BOUTON = 0.25;
+const CLASSE_PAR_STATUT: Record<DetectionStatut, string> = {
+  EN_ATTENTE: 'border-amber-400 bg-amber-400/10',
+  ACCEPTEE: 'border-green-500 bg-green-500/10',
+  REJETEE: 'border-red-500 bg-red-500/10 opacity-50',
+};
 const ZOOM_STEP_MOLETTE = 0.1;
 
 function clamp(valeur: number, min: number, max: number): number {
@@ -24,7 +31,7 @@ function clamp(valeur: number, min: number, max: number): number {
 
 @Component({
   selector: 'app-examen-image-viewer',
-  imports: [],
+  imports: [DecimalPipe],
   templateUrl: './examen-image-viewer.html',
 })
 export class ExamenImageViewer implements OnInit, OnDestroy {
@@ -32,6 +39,7 @@ export class ExamenImageViewer implements OnInit, OnDestroy {
 
   readonly examenId = input.required<number>();
   readonly images = input.required<ExamenImage[]>();
+  readonly detections = input.required<Detection[]>();
   readonly indexInitial = input.required<number>();
   readonly fermer = output<void>();
 
@@ -40,6 +48,7 @@ export class ExamenImageViewer implements OnInit, OnDestroy {
   protected readonly indexCourant = signal(0);
   protected readonly niveauZoom = signal(ZOOM_MIN);
   protected readonly pan = signal({ x: 0, y: 0 });
+  protected readonly dimensionsImage = signal<{ largeur: number; hauteur: number } | null>(null);
 
   private enTrainDeDeplacer = false;
   private dernierPointeur = { x: 0, y: 0 };
@@ -65,6 +74,16 @@ export class ExamenImageViewer implements OnInit, OnDestroy {
     () => `Image ${this.imageCourante().ordre} — ${this.indexCourant() + 1} / ${this.images().length}`
   );
 
+  protected readonly detectionsCoupeCourante = computed(() =>
+    this.detections().filter((d) => d.coupe === this.imageCourante().ordre)
+  );
+
+  protected readonly coupesAvecDetection = computed(() =>
+    [...new Set(this.detections().map((d) => d.coupe))].sort((a, b) => a - b)
+  );
+
+  protected readonly coupesAvecDetectionAffichage = computed(() => this.coupesAvecDetection().join(', '));
+
   ngOnInit(): void {
     this.indexCourant.set(this.indexInitial());
     this.store.charger(this.examenId(), this.imageCourante());
@@ -88,6 +107,14 @@ export class ExamenImageViewer implements OnInit, OnDestroy {
 
   protected onArretPropagation(event: MouseEvent): void {
     event.stopPropagation();
+  }
+
+  protected onImageChargee(img: HTMLImageElement): void {
+    this.dimensionsImage.set({ largeur: img.naturalWidth, hauteur: img.naturalHeight });
+  }
+
+  protected classeStatut(statut: DetectionStatut): string {
+    return CLASSE_PAR_STATUT[statut];
   }
 
   protected onZoomIn(): void {
@@ -130,6 +157,7 @@ export class ExamenImageViewer implements OnInit, OnDestroy {
       return;
     }
     this.indexCourant.set(index);
+    this.dimensionsImage.set(null);
     this.store.charger(this.examenId(), this.imageCourante());
     this.niveauZoom.set(ZOOM_MIN);
     this.pan.set({ x: 0, y: 0 });

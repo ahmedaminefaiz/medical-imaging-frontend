@@ -1,5 +1,6 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { Detection } from '../../models/detection.model';
 import { ExamenImage } from '../../models/examen.model';
 import { ApercuEntree, ExamenImageApercuStore } from '../../services/examen-image-apercu-store.service';
 import { ExamenImageViewer } from './examen-image-viewer';
@@ -9,6 +10,31 @@ const IMAGES: ExamenImage[] = [
   { imageId: 2, format: 'PNG', apercuDisponible: false, ordre: 1 },
   { imageId: 3, format: 'PNG', apercuDisponible: true, ordre: 2 },
   { imageId: 4, format: 'PNG', apercuDisponible: true, ordre: 3 },
+];
+
+const DETECTIONS: Detection[] = [
+  {
+    id: 1,
+    imageId: 1,
+    type: 'BOX',
+    anomalie: 'nodule',
+    confiance: 0.87,
+    statut: 'EN_ATTENTE',
+    coupe: 0,
+    bbox: { x: 128, y: 64, largeur: 32, hauteur: 32 },
+    cheminMasque: null,
+  },
+  {
+    id: 2,
+    imageId: 3,
+    type: 'BOX',
+    anomalie: 'opacite',
+    confiance: 0.6,
+    statut: 'EN_ATTENTE',
+    coupe: 2,
+    bbox: { x: 0, y: 0, largeur: 512, hauteur: 512 },
+    cheminMasque: null,
+  },
 ];
 
 const ENTREES: Record<number, ApercuEntree | undefined> = {
@@ -27,7 +53,7 @@ describe('ExamenImageViewer', () => {
     };
   });
 
-  async function createComponent(indexInitial: number) {
+  async function createComponent(indexInitial: number, detections: Detection[] = DETECTIONS) {
     await TestBed.configureTestingModule({
       imports: [ExamenImageViewer],
       providers: [{ provide: ExamenImageApercuStore, useValue: store }],
@@ -36,6 +62,7 @@ describe('ExamenImageViewer', () => {
     const fixture = TestBed.createComponent(ExamenImageViewer);
     fixture.componentRef.setInput('examenId', 10);
     fixture.componentRef.setInput('images', IMAGES);
+    fixture.componentRef.setInput('detections', detections);
     fixture.componentRef.setInput('indexInitial', indexInitial);
     fixture.detectChanges();
     return fixture;
@@ -194,5 +221,64 @@ describe('ExamenImageViewer', () => {
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
 
     expect(emitSpy).not.toHaveBeenCalled();
+  });
+
+  describe('overlay des détections', () => {
+    it('ne filtre que les détections de la coupe affichée (coupe === ordre)', async () => {
+      const fixture = await createComponent(0); // image d'ordre 0 -> détection id 1 uniquement
+
+      expect(fixture.componentInstance['detectionsCoupeCourante']()).toEqual([DETECTIONS[0]]);
+    });
+
+    it('met à jour les détections affichées après un changement de coupe', async () => {
+      const fixture = await createComponent(0);
+      const instance = fixture.componentInstance;
+
+      instance['onSuivant'](); // saute vers l'image d'ordre 2 (détection id 2)
+
+      expect(instance['detectionsCoupeCourante']()).toEqual([DETECTIONS[1]]);
+    });
+
+    it("n'affiche aucune box tant que les dimensions naturelles de l'image ne sont pas connues", async () => {
+      const fixture = await createComponent(0);
+
+      expect(fixture.nativeElement.querySelectorAll('.pointer-events-none').length).toBe(0);
+    });
+
+    it('positionne la box en pourcentage selon les dimensions naturelles réelles de l\'image', async () => {
+      const fixture = await createComponent(0);
+      const instance = fixture.componentInstance;
+
+      instance['onImageChargee']({ naturalWidth: 512, naturalHeight: 512 } as HTMLImageElement);
+      fixture.detectChanges();
+
+      const box = fixture.nativeElement.querySelector('.pointer-events-none') as HTMLElement;
+      expect(box).not.toBeNull();
+      expect(box.style.left).toBe('25%'); // 128 / 512 * 100
+      expect(box.style.top).toBe('12.5%'); // 64 / 512 * 100
+      expect(box.style.width).toBe('6.25%'); // 32 / 512 * 100
+      expect(box.style.height).toBe('6.25%'); // 32 / 512 * 100
+    });
+
+    it('changer de coupe réinitialise les dimensions connues (pas de box avec les anciennes dimensions)', async () => {
+      const fixture = await createComponent(0);
+      const instance = fixture.componentInstance;
+
+      instance['onImageChargee']({ naturalWidth: 512, naturalHeight: 512 } as HTMLImageElement);
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelectorAll('.pointer-events-none').length).toBe(1);
+
+      instance['onSuivant']();
+      fixture.detectChanges();
+
+      expect(instance['dimensionsImage']()).toBeNull();
+      expect(fixture.nativeElement.querySelectorAll('.pointer-events-none').length).toBe(0);
+    });
+
+    it("calcule la liste triée et dédupliquée des coupes qui portent des détections", async () => {
+      const fixture = await createComponent(0);
+
+      expect(fixture.componentInstance['coupesAvecDetection']()).toEqual([0, 2]);
+    });
   });
 });
