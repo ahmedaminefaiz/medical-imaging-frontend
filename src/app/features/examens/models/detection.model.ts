@@ -18,6 +18,8 @@ export interface Detection {
   coupe: number | null;
   bbox: DetectionBbox | null;
   apercuMasqueDisponible: boolean;
+  validateurEmail: string | null;
+  valideLe: string | null;
 }
 
 export type AnalyseStatut = 'EN_ATTENTE' | 'EN_COURS' | 'TERMINEE' | 'ECHOUEE';

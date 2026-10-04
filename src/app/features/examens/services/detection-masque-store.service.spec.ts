@@ -14,6 +14,8 @@ const DETECTION_MASQUE: Detection = {
   coupe: 5,
   bbox: null,
   apercuMasqueDisponible: true,
+  validateurEmail: null,
+  valideLe: null,
 };
 
 const DETECTION_MASQUE_SANS_APERCU: Detection = {
@@ -32,6 +34,8 @@ const DETECTION_BOX: Detection = {
   coupe: 2,
   bbox: { x: 1, y: 2, largeur: 3, hauteur: 4 },
   apercuMasqueDisponible: false,
+  validateurEmail: null,
+  valideLe: null,
 };
 
 describe('DetectionMasqueStore', () => {

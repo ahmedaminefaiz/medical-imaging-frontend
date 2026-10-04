@@ -29,6 +29,8 @@ const DETECTION_BOX: Detection = {
   coupe: 0,
   bbox: { x: 5, y: 6, largeur: 20, hauteur: 30 },
   apercuMasqueDisponible: false,
+  validateurEmail: null,
+  valideLe: null,
 };
 
 const DETECTION_MASQUE: Detection = {
@@ -41,6 +43,8 @@ const DETECTION_MASQUE: Detection = {
   coupe: 0,
   bbox: null,
   apercuMasqueDisponible: true,
+  validateurEmail: null,
+  valideLe: null,
 };
 
 describe('ExamenImageViewer', () => {
@@ -62,7 +66,11 @@ describe('ExamenImageViewer', () => {
     };
   });
 
-  async function createComponent(indexInitial: number, detections: Detection[] = []) {
+  async function createComponent(
+    indexInitial: number,
+    detections: Detection[] = [],
+    peutValider = false
+  ) {
     await TestBed.configureTestingModule({
       imports: [ExamenImageViewer],
       providers: [
@@ -76,6 +84,7 @@ describe('ExamenImageViewer', () => {
     fixture.componentRef.setInput('images', IMAGES);
     fixture.componentRef.setInput('indexInitial', indexInitial);
     fixture.componentRef.setInput('detections', detections);
+    fixture.componentRef.setInput('peutValider', peutValider);
     fixture.detectChanges();
     return fixture;
   }
@@ -294,5 +303,75 @@ describe('ExamenImageViewer', () => {
 
     expect(masqueStore.clearAll).toHaveBeenCalledTimes(1);
     expect(masqueStore.charger).toHaveBeenCalledWith(10, detectionCoupe3);
+  });
+
+  it("n'affiche pas les boutons Accepter/Rejeter quand peutValider est faux", async () => {
+    masqueEntrees[20] = { objectUrl: 'blob:masque-20', loading: false, error: false };
+    const fixture = await createComponent(0, [DETECTION_BOX, DETECTION_MASQUE], false);
+
+    const texte = (fixture.nativeElement as HTMLElement).textContent;
+    expect(texte).not.toContain('Accepter');
+    expect(texte).not.toContain('Rejeter');
+  });
+
+  it('affiche les boutons Accepter/Rejeter pour une box et un masque quand peutValider est vrai', async () => {
+    masqueEntrees[20] = { objectUrl: 'blob:masque-20', loading: false, error: false };
+    const fixture = await createComponent(0, [DETECTION_BOX, DETECTION_MASQUE], true);
+
+    const boutons = Array.from(fixture.nativeElement.querySelectorAll('button')) as HTMLButtonElement[];
+    const libelles = boutons.map((b) => b.textContent?.trim());
+    expect(libelles.filter((l) => l === 'Accepter')).toHaveLength(2);
+    expect(libelles.filter((l) => l === 'Rejeter')).toHaveLength(2);
+  });
+
+  it('le clic sur Accepter émet validerDetection avec le statut ACCEPTEE', async () => {
+    const fixture = await createComponent(0, [DETECTION_BOX], true);
+    const emitSpy = vi.fn();
+    fixture.componentInstance.validerDetection.subscribe(emitSpy);
+
+    const bouton = Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>).find(
+      (b) => b.textContent?.trim() === 'Accepter'
+    )!;
+    bouton.click();
+
+    expect(emitSpy).toHaveBeenCalledWith({ detectionId: DETECTION_BOX.id, statut: 'ACCEPTEE' });
+  });
+
+  it('le clic sur Rejeter émet validerDetection avec le statut REJETEE', async () => {
+    const fixture = await createComponent(0, [DETECTION_BOX], true);
+    const emitSpy = vi.fn();
+    fixture.componentInstance.validerDetection.subscribe(emitSpy);
+
+    const bouton = Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>).find(
+      (b) => b.textContent?.trim() === 'Rejeter'
+    )!;
+    bouton.click();
+
+    expect(emitSpy).toHaveBeenCalledWith({ detectionId: DETECTION_BOX.id, statut: 'REJETEE' });
+  });
+
+  it('une box ACCEPTEE est tracée en vert', async () => {
+    const fixture = await createComponent(0, [{ ...DETECTION_BOX, statut: 'ACCEPTEE' }]);
+    fixture.componentInstance['onImageLoad']({ naturalWidth: 100, naturalHeight: 100 } as HTMLImageElement);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('rect').getAttribute('stroke')).toBe('#16a34a');
+  });
+
+  it('une box REJETEE est tracée en rouge et son libellé est barré', async () => {
+    const fixture = await createComponent(0, [{ ...DETECTION_BOX, statut: 'REJETEE' }]);
+    fixture.componentInstance['onImageLoad']({ naturalWidth: 100, naturalHeight: 100 } as HTMLImageElement);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('rect').getAttribute('stroke')).toBe('#dc2626');
+    expect(fixture.nativeElement.querySelector('text').classList.contains('line-through')).toBe(true);
+  });
+
+  it('affiche "validé par" quand validateurEmail est renseigné', async () => {
+    const fixture = await createComponent(0, [
+      { ...DETECTION_BOX, statut: 'ACCEPTEE', validateurEmail: 'radio@test.com' },
+    ]);
+
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('validé par radio@test.com');
   });
 });

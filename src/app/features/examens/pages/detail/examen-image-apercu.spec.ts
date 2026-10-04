@@ -18,6 +18,8 @@ const DETECTION_SUR_IMAGE_1: Detection = {
   coupe: 0,
   bbox: { x: 1, y: 2, largeur: 3, hauteur: 4 },
   apercuMasqueDisponible: false,
+  validateurEmail: null,
+  valideLe: null,
 };
 
 describe('ExamenImageApercu', () => {

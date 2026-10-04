@@ -50,4 +50,25 @@ describe('DetectionService', () => {
     expect(req.request.method).toBe('GET');
     req.flush({ examenId: 42, statut: 'EN_ATTENTE', message: null, finieLe: null });
   });
+
+  it('validerStatut() appelle PATCH .../detections/{id}/statut avec le statut demandé', () => {
+    service.validerStatut(42, 7, 'ACCEPTEE').subscribe();
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/v1/examens/42/detections/7/statut`);
+    expect(req.request.method).toBe('PATCH');
+    expect(req.request.body).toEqual({ statut: 'ACCEPTEE' });
+    req.flush({
+      id: 7,
+      imageId: 1,
+      type: 'BOX',
+      anomalie: 'nodule',
+      confiance: 0.9,
+      statut: 'ACCEPTEE',
+      coupe: 0,
+      bbox: null,
+      apercuMasqueDisponible: false,
+      validateurEmail: 'radio@test.com',
+      valideLe: '2026-01-01T00:00:00',
+    });
+  });
 });
