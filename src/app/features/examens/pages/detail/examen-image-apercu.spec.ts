@@ -1,11 +1,24 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { Detection } from '../../models/detection.model';
 import { ExamenImage } from '../../models/examen.model';
 import { ApercuEntree, ExamenImageApercuStore } from '../../services/examen-image-apercu-store.service';
 import { ExamenImageApercu } from './examen-image-apercu';
 
 const IMAGE_DISPONIBLE: ExamenImage = { imageId: 1, format: 'PNG', apercuDisponible: true, ordre: 0 };
 const IMAGE_INDISPONIBLE: ExamenImage = { imageId: 2, format: 'DICOM', apercuDisponible: false, ordre: 1 };
+
+const DETECTION_SUR_IMAGE_1: Detection = {
+  id: 1,
+  imageId: 1,
+  type: 'BOX',
+  anomalie: 'nodule',
+  confiance: 0.9,
+  statut: 'EN_ATTENTE',
+  coupe: 0,
+  bbox: { x: 1, y: 2, largeur: 3, hauteur: 4 },
+  apercuMasqueDisponible: false,
+};
 
 describe('ExamenImageApercu', () => {
   let store: Partial<ExamenImageApercuStore>;
@@ -17,7 +30,7 @@ describe('ExamenImageApercu', () => {
     };
   }
 
-  async function createComponent(image: ExamenImage) {
+  async function createComponent(image: ExamenImage, detections: Detection[] = []) {
     await TestBed.configureTestingModule({
       imports: [ExamenImageApercu],
       providers: [{ provide: ExamenImageApercuStore, useValue: store }],
@@ -26,6 +39,7 @@ describe('ExamenImageApercu', () => {
     const fixture = TestBed.createComponent(ExamenImageApercu);
     fixture.componentRef.setInput('examenId', 10);
     fixture.componentRef.setInput('image', image);
+    fixture.componentRef.setInput('detections', detections);
     fixture.detectChanges();
     return fixture;
   }
@@ -133,5 +147,21 @@ describe('ExamenImageApercu', () => {
     fixture.componentInstance['onClick']();
 
     expect(emitSpy).not.toHaveBeenCalled();
+  });
+
+  it('affiche le badge de détection quand une détection référence cette image', async () => {
+    mockStore({ objectUrl: 'blob:fake-url', loading: false, error: false });
+
+    const fixture = await createComponent(IMAGE_DISPONIBLE, [DETECTION_SUR_IMAGE_1]);
+
+    expect(fixture.nativeElement.querySelector('[aria-label="Détection IA présente"]')).not.toBeNull();
+  });
+
+  it("n'affiche pas le badge quand aucune détection ne référence cette image", async () => {
+    mockStore({ objectUrl: 'blob:fake-url', loading: false, error: false });
+
+    const fixture = await createComponent(IMAGE_DISPONIBLE, []);
+
+    expect(fixture.nativeElement.querySelector('[aria-label="Détection IA présente"]')).toBeNull();
   });
 });
