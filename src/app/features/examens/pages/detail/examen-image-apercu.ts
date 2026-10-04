@@ -1,4 +1,5 @@
-import { Component, OnInit, Signal, inject, input, output } from '@angular/core';
+import { Component, OnInit, Signal, computed, inject, input, output } from '@angular/core';
+import { Detection } from '../../models/detection.model';
 import { ExamenImage } from '../../models/examen.model';
 import { ApercuEntree, ExamenImageApercuStore } from '../../services/examen-image-apercu-store.service';
 
@@ -12,9 +13,14 @@ export class ExamenImageApercu implements OnInit {
 
   readonly examenId = input.required<number>();
   readonly image = input.required<ExamenImage>();
+  readonly detections = input<Detection[]>([]);
   readonly ouvrir = output<void>();
 
   protected entree!: Signal<ApercuEntree | undefined>;
+
+  protected readonly aUneDetection = computed(() =>
+    this.detections().some((d) => d.imageId === this.image().imageId)
+  );
 
   ngOnInit(): void {
     this.store.charger(this.examenId(), this.image());

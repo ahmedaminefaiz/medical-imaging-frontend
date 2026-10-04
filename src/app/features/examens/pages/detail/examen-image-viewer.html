@@ -46,13 +46,70 @@
   >
     @let e = entreeCourante();
     @if (e && !e.loading && !e.error) {
-      <img
-        [src]="e.objectUrl"
-        [alt]="'Image ' + imageCourante().imageId"
+      <div
+        class="grid max-h-full max-w-full"
         [style.transform]="transformStyle()"
         [style.cursor]="niveauZoom() > 1 ? 'grab' : 'default'"
-        class="max-h-full max-w-full select-none object-contain"
-      />
+      >
+        <img
+          #imgCourante
+          (load)="onImageLoad(imgCourante)"
+          [src]="e.objectUrl"
+          [alt]="'Image ' + imageCourante().imageId"
+          class="col-start-1 row-start-1 max-h-full max-w-full select-none object-contain"
+        />
+
+        @if (boxes().length > 0 && naturalSize(); as taille) {
+          <svg
+            class="pointer-events-none col-start-1 row-start-1 h-full w-full"
+            [attr.viewBox]="'0 0 ' + taille.width + ' ' + taille.height"
+            preserveAspectRatio="none"
+          >
+            @for (box of boxes(); track box.id) {
+              <rect
+                [attr.x]="box.bbox!.x"
+                [attr.y]="box.bbox!.y"
+                [attr.width]="box.bbox!.largeur"
+                [attr.height]="box.bbox!.hauteur"
+                fill="none"
+                stroke="#f59e0b"
+                stroke-width="3"
+              />
+              <text
+                [attr.x]="box.bbox!.x"
+                [attr.y]="box.bbox!.y > 20 ? box.bbox!.y - 6 : box.bbox!.y + 16"
+                fill="#f59e0b"
+                font-size="16"
+                font-weight="600"
+              >{{ box.anomalie }} — {{ pourcentage(box.confiance) }}%</text>
+            }
+          </svg>
+        }
+
+        @for (masque of masques(); track masque.id) {
+          @let url = masqueUrl(masque.id);
+          @if (url) {
+            <div
+              class="pointer-events-none col-start-1 row-start-1 bg-red-600 opacity-40"
+              [ngStyle]="{
+                'mask-image': 'url(' + url + ')',
+                'mask-size': '100% 100%',
+                'mask-mode': 'luminance',
+                '-webkit-mask-image': 'url(' + url + ')',
+                '-webkit-mask-size': '100% 100%'
+              }"
+            ></div>
+          }
+        }
+      </div>
+
+      @if (masques().length > 0) {
+        <div class="pointer-events-none absolute left-4 top-10 text-xs text-white/80">
+          @for (masque of masques(); track masque.id) {
+            <p>{{ masque.anomalie }} — {{ pourcentage(masque.confiance) }}%</p>
+          }
+        </div>
+      }
     } @else if (e?.error) {
       <p class="text-sm text-red-400">Erreur de chargement</p>
     } @else {

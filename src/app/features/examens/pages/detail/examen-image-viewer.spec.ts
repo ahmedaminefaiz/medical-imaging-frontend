@@ -1,7 +1,9 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { Detection } from '../../models/detection.model';
 import { ExamenImage } from '../../models/examen.model';
 import { ApercuEntree, ExamenImageApercuStore } from '../../services/examen-image-apercu-store.service';
+import { DetectionMasqueStore, MasqueEntree } from '../../services/detection-masque-store.service';
 import { ExamenImageViewer } from './examen-image-viewer';
 
 const IMAGES: ExamenImage[] = [
@@ -17,26 +19,63 @@ const ENTREES: Record<number, ApercuEntree | undefined> = {
   4: { objectUrl: null, loading: false, error: true },
 };
 
+const DETECTION_BOX: Detection = {
+  id: 10,
+  imageId: 1,
+  type: 'BOX',
+  anomalie: 'nodule',
+  confiance: 0.87,
+  statut: 'EN_ATTENTE',
+  coupe: 0,
+  bbox: { x: 5, y: 6, largeur: 20, hauteur: 30 },
+  apercuMasqueDisponible: false,
+};
+
+const DETECTION_MASQUE: Detection = {
+  id: 20,
+  imageId: 1,
+  type: 'MASQUE',
+  anomalie: 'rate',
+  confiance: 0.93,
+  statut: 'EN_ATTENTE',
+  coupe: 0,
+  bbox: null,
+  apercuMasqueDisponible: true,
+};
+
 describe('ExamenImageViewer', () => {
   let store: Partial<ExamenImageApercuStore>;
+  let masqueStore: Partial<DetectionMasqueStore>;
+  let masqueEntrees: Record<number, MasqueEntree | undefined>;
 
   beforeEach(() => {
     store = {
       charger: vi.fn(),
       entree: vi.fn((imageId: number) => signal(ENTREES[imageId])),
     };
+
+    masqueEntrees = {};
+    masqueStore = {
+      charger: vi.fn(),
+      clearAll: vi.fn(),
+      entree: vi.fn((detectionId: number) => signal(masqueEntrees[detectionId])),
+    };
   });
 
-  async function createComponent(indexInitial: number) {
+  async function createComponent(indexInitial: number, detections: Detection[] = []) {
     await TestBed.configureTestingModule({
       imports: [ExamenImageViewer],
-      providers: [{ provide: ExamenImageApercuStore, useValue: store }],
+      providers: [
+        { provide: ExamenImageApercuStore, useValue: store },
+        { provide: DetectionMasqueStore, useValue: masqueStore },
+      ],
     }).compileComponents();
 
     const fixture = TestBed.createComponent(ExamenImageViewer);
     fixture.componentRef.setInput('examenId', 10);
     fixture.componentRef.setInput('images', IMAGES);
     fixture.componentRef.setInput('indexInitial', indexInitial);
+    fixture.componentRef.setInput('detections', detections);
     fixture.detectChanges();
     return fixture;
   }
@@ -194,5 +233,66 @@ describe('ExamenImageViewer', () => {
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
 
     expect(emitSpy).not.toHaveBeenCalled();
+  });
+
+  it('affiche un rectangle pour une détection BOX de la coupe courante', async () => {
+    const fixture = await createComponent(0, [DETECTION_BOX]);
+    fixture.componentInstance['onImageLoad']({ naturalWidth: 100, naturalHeight: 100 } as HTMLImageElement);
+    fixture.detectChanges();
+
+    const rect = fixture.nativeElement.querySelector('rect');
+    expect(rect).not.toBeNull();
+    expect(rect.getAttribute('x')).toBe('5');
+    expect(rect.getAttribute('y')).toBe('6');
+    expect(rect.getAttribute('width')).toBe('20');
+    expect(rect.getAttribute('height')).toBe('30');
+  });
+
+  it("n'affiche pas de rectangle tant que les dimensions naturelles de l'image ne sont pas connues", async () => {
+    const fixture = await createComponent(0, [DETECTION_BOX]);
+
+    expect(fixture.nativeElement.querySelector('rect')).toBeNull();
+  });
+
+  it('affiche un calque coloré pour une détection MASQUE avec une URL de masque résolue', async () => {
+    masqueEntrees[20] = { objectUrl: 'blob:masque-20', loading: false, error: false };
+
+    const fixture = await createComponent(0, [DETECTION_MASQUE]);
+
+    const calque = fixture.nativeElement.querySelector('.bg-red-600');
+    expect(calque).not.toBeNull();
+    expect(calque.getAttribute('style')).toContain('blob:masque-20');
+  });
+
+  it("n'affiche pas de calque MASQUE tant que son URL n'est pas résolue", async () => {
+    const fixture = await createComponent(0, [DETECTION_MASQUE]);
+
+    expect(fixture.nativeElement.querySelector('.bg-red-600')).toBeNull();
+  });
+
+  it("n'affiche aucun overlay quand la coupe courante n'a aucune détection", async () => {
+    const fixture = await createComponent(0, []);
+
+    expect(fixture.nativeElement.querySelector('rect')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.bg-red-600')).toBeNull();
+  });
+
+  it("charge les masques de la coupe initiale dès l'ouverture", async () => {
+    await createComponent(0, [DETECTION_MASQUE]);
+
+    expect(masqueStore.charger).toHaveBeenCalledWith(10, DETECTION_MASQUE);
+  });
+
+  it('change de coupe : vide le store des masques puis recharge ceux de la nouvelle coupe', async () => {
+    const detectionCoupe3: Detection = { ...DETECTION_MASQUE, id: 21, imageId: 3 };
+    const fixture = await createComponent(0, [DETECTION_MASQUE, detectionCoupe3]);
+
+    (masqueStore.charger as ReturnType<typeof vi.fn>).mockClear();
+    (masqueStore.clearAll as ReturnType<typeof vi.fn>).mockClear();
+
+    fixture.componentInstance['onSuivant'](); // image 2 non ouvrable -> saute vers image 3
+
+    expect(masqueStore.clearAll).toHaveBeenCalledTimes(1);
+    expect(masqueStore.charger).toHaveBeenCalledWith(10, detectionCoupe3);
   });
 });

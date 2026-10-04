@@ -1,3 +1,4 @@
+import { NgStyle } from '@angular/common';
 import {
   Component,
   ElementRef,
@@ -10,8 +11,10 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { Detection } from '../../models/detection.model';
 import { ExamenImage } from '../../models/examen.model';
 import { ExamenImageApercuStore } from '../../services/examen-image-apercu-store.service';
+import { DetectionMasqueStore } from '../../services/detection-masque-store.service';
 
 const ZOOM_MIN = 1;
 const ZOOM_MAX = 5;
@@ -24,15 +27,17 @@ function clamp(valeur: number, min: number, max: number): number {
 
 @Component({
   selector: 'app-examen-image-viewer',
-  imports: [],
+  imports: [NgStyle],
   templateUrl: './examen-image-viewer.html',
 })
 export class ExamenImageViewer implements OnInit, OnDestroy {
   private readonly store = inject(ExamenImageApercuStore);
+  private readonly masqueStore = inject(DetectionMasqueStore);
 
   readonly examenId = input.required<number>();
   readonly images = input.required<ExamenImage[]>();
   readonly indexInitial = input.required<number>();
+  readonly detections = input<Detection[]>([]);
   readonly fermer = output<void>();
 
   private readonly conteneurImage = viewChild<ElementRef<HTMLElement>>('conteneurImage');
@@ -40,6 +45,7 @@ export class ExamenImageViewer implements OnInit, OnDestroy {
   protected readonly indexCourant = signal(0);
   protected readonly niveauZoom = signal(ZOOM_MIN);
   protected readonly pan = signal({ x: 0, y: 0 });
+  protected readonly naturalSize = signal<{ width: number; height: number } | null>(null);
 
   private enTrainDeDeplacer = false;
   private dernierPointeur = { x: 0, y: 0 };
@@ -65,9 +71,20 @@ export class ExamenImageViewer implements OnInit, OnDestroy {
     () => `Image ${this.imageCourante().ordre} — ${this.indexCourant() + 1} / ${this.images().length}`
   );
 
+  protected readonly detectionsCoupeCourante = computed(() =>
+    this.detections().filter((d) => d.imageId === this.imageCourante().imageId)
+  );
+
+  protected readonly boxes = computed(() => this.detectionsCoupeCourante().filter((d) => d.type === 'BOX'));
+
+  protected readonly masques = computed(() =>
+    this.detectionsCoupeCourante().filter((d) => d.type === 'MASQUE')
+  );
+
   ngOnInit(): void {
     this.indexCourant.set(this.indexInitial());
     this.store.charger(this.examenId(), this.imageCourante());
+    this.chargerMasquesCoupeCourante();
 
     window.addEventListener('keydown', this.onKeydown);
     window.addEventListener('mousemove', this.onMouseMove);
@@ -131,8 +148,29 @@ export class ExamenImageViewer implements OnInit, OnDestroy {
     }
     this.indexCourant.set(index);
     this.store.charger(this.examenId(), this.imageCourante());
+    this.naturalSize.set(null);
+    this.masqueStore.clearAll();
+    this.chargerMasquesCoupeCourante();
     this.niveauZoom.set(ZOOM_MIN);
     this.pan.set({ x: 0, y: 0 });
+  }
+
+  private chargerMasquesCoupeCourante(): void {
+    for (const detection of this.masques()) {
+      this.masqueStore.charger(this.examenId(), detection);
+    }
+  }
+
+  protected masqueUrl(detectionId: number): string | null {
+    return this.masqueStore.entree(detectionId)()?.objectUrl ?? null;
+  }
+
+  protected pourcentage(confiance: number): number {
+    return Math.round(confiance * 100);
+  }
+
+  protected onImageLoad(img: HTMLImageElement): void {
+    this.naturalSize.set({ width: img.naturalWidth, height: img.naturalHeight });
   }
 
   private gererDeplacement(event: MouseEvent): void {
