@@ -72,15 +72,16 @@
                 [attr.width]="box.bbox!.largeur"
                 [attr.height]="box.bbox!.hauteur"
                 fill="none"
-                stroke="#f59e0b"
+                [attr.stroke]="couleurBox(box.statut)"
                 stroke-width="3"
               />
               <text
                 [attr.x]="box.bbox!.x"
                 [attr.y]="box.bbox!.y > 20 ? box.bbox!.y - 6 : box.bbox!.y + 16"
-                fill="#f59e0b"
+                [attr.fill]="couleurBox(box.statut)"
                 font-size="16"
                 font-weight="600"
+                [class.line-through]="box.statut === 'REJETEE'"
               >{{ box.anomalie }} — {{ pourcentage(box.confiance) }}%</text>
             }
           </svg>
@@ -90,7 +91,8 @@
           @let url = masqueUrl(masque.id);
           @if (url) {
             <div
-              class="pointer-events-none col-start-1 row-start-1 bg-red-600 opacity-40"
+              class="pointer-events-none col-start-1 row-start-1 opacity-40"
+              [class]="classeMasque(masque.statut)"
               [ngStyle]="{
                 'mask-image': 'url(' + url + ')',
                 'mask-size': '100% 100%',
@@ -103,10 +105,74 @@
         }
       </div>
 
+      @if (boxes().length > 0) {
+        <div
+          class="absolute right-4 top-10 max-w-xs space-y-2 text-xs text-white/80"
+          (click)="onArretPropagation($event)"
+        >
+          @for (box of boxes(); track box.id) {
+            <div class="rounded-md bg-black/40 p-2">
+              <p [class.line-through]="box.statut === 'REJETEE'">
+                {{ box.anomalie }} — {{ pourcentage(box.confiance) }}%
+              </p>
+              @if (box.validateurEmail) {
+                <p class="text-white/60">validé par {{ box.validateurEmail }}</p>
+              }
+              @if (peutValider()) {
+                <div class="mt-1 flex gap-2">
+                  <button
+                    type="button"
+                    (click)="onAccepter(box.id)"
+                    class="rounded bg-green-600 px-2 py-0.5 font-medium text-white hover:bg-green-700"
+                  >
+                    Accepter
+                  </button>
+                  <button
+                    type="button"
+                    (click)="onRejeter(box.id)"
+                    class="rounded bg-red-600 px-2 py-0.5 font-medium text-white hover:bg-red-700"
+                  >
+                    Rejeter
+                  </button>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
+
       @if (masques().length > 0) {
-        <div class="pointer-events-none absolute left-4 top-10 text-xs text-white/80">
+        <div
+          class="absolute left-4 top-10 max-w-xs space-y-2 text-xs text-white/80"
+          (click)="onArretPropagation($event)"
+        >
           @for (masque of masques(); track masque.id) {
-            <p>{{ masque.anomalie }} — {{ pourcentage(masque.confiance) }}%</p>
+            <div class="rounded-md bg-black/40 p-2">
+              <p [class.line-through]="masque.statut === 'REJETEE'">
+                {{ masque.anomalie }} — {{ pourcentage(masque.confiance) }}%
+              </p>
+              @if (masque.validateurEmail) {
+                <p class="text-white/60">validé par {{ masque.validateurEmail }}</p>
+              }
+              @if (peutValider()) {
+                <div class="mt-1 flex gap-2">
+                  <button
+                    type="button"
+                    (click)="onAccepter(masque.id)"
+                    class="rounded bg-green-600 px-2 py-0.5 font-medium text-white hover:bg-green-700"
+                  >
+                    Accepter
+                  </button>
+                  <button
+                    type="button"
+                    (click)="onRejeter(masque.id)"
+                    class="rounded bg-red-600 px-2 py-0.5 font-medium text-white hover:bg-red-700"
+                  >
+                    Rejeter
+                  </button>
+                </div>
+              }
+            </div>
           }
         </div>
       }

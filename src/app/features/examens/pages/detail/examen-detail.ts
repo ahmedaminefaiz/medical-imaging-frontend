@@ -47,6 +47,8 @@ export class ExamenDetail implements OnInit, OnDestroy {
     return role === 'RADIOLOGUE' || role === 'TECHNICIEN';
   });
 
+  protected readonly peutValider = computed(() => this.authService.currentUser()?.role === 'RADIOLOGUE');
+
   protected readonly analyseEnCours = computed(
     () => this.lancementEnCours() || this.statutAnalyse() === 'EN_COURS'
   );
@@ -103,6 +105,16 @@ export class ExamenDetail implements OnInit, OnDestroy {
       error: (err: HttpErrorResponse) => {
         this.lancementEnCours.set(false);
         this.erreurAnalyse.set(this.messageErreurAnalyse(err));
+      },
+    });
+  }
+
+  protected onValiderDetection(event: { detectionId: number; statut: 'ACCEPTEE' | 'REJETEE' }): void {
+    this.detectionService.validerStatut(this.examenId, event.detectionId, event.statut).subscribe({
+      next: (detectionMiseAJour) => {
+        this.detections.update((liste) =>
+          liste.map((d) => (d.id === detectionMiseAJour.id ? detectionMiseAJour : d))
+        );
       },
     });
   }

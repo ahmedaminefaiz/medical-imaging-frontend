@@ -11,7 +11,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { Detection } from '../../models/detection.model';
+import { Detection, DetectionStatut } from '../../models/detection.model';
 import { ExamenImage } from '../../models/examen.model';
 import { ExamenImageApercuStore } from '../../services/examen-image-apercu-store.service';
 import { DetectionMasqueStore } from '../../services/detection-masque-store.service';
@@ -38,7 +38,9 @@ export class ExamenImageViewer implements OnInit, OnDestroy {
   readonly images = input.required<ExamenImage[]>();
   readonly indexInitial = input.required<number>();
   readonly detections = input<Detection[]>([]);
+  readonly peutValider = input<boolean>(false);
   readonly fermer = output<void>();
+  readonly validerDetection = output<{ detectionId: number; statut: 'ACCEPTEE' | 'REJETEE' }>();
 
   private readonly conteneurImage = viewChild<ElementRef<HTMLElement>>('conteneurImage');
 
@@ -167,6 +169,28 @@ export class ExamenImageViewer implements OnInit, OnDestroy {
 
   protected pourcentage(confiance: number): number {
     return Math.round(confiance * 100);
+  }
+
+  protected onAccepter(detectionId: number): void {
+    this.validerDetection.emit({ detectionId, statut: 'ACCEPTEE' });
+  }
+
+  protected onRejeter(detectionId: number): void {
+    this.validerDetection.emit({ detectionId, statut: 'REJETEE' });
+  }
+
+  protected couleurBox(statut: DetectionStatut): string {
+    if (statut === 'ACCEPTEE') {
+      return '#16a34a';
+    }
+    if (statut === 'REJETEE') {
+      return '#dc2626';
+    }
+    return '#f59e0b';
+  }
+
+  protected classeMasque(statut: DetectionStatut): string {
+    return statut === 'ACCEPTEE' ? 'bg-green-600' : 'bg-red-600';
   }
 
   protected onImageLoad(img: HTMLImageElement): void {

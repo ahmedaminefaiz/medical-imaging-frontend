@@ -33,6 +33,8 @@ const DETECTION: Detection = {
   coupe: 0,
   bbox: { x: 1, y: 2, largeur: 3, hauteur: 4 },
   apercuMasqueDisponible: false,
+  validateurEmail: null,
+  valideLe: null,
 };
 
 const STATUT_EN_ATTENTE: AnalyseStatutResponse = {
@@ -85,6 +87,7 @@ describe('ExamenDetail', () => {
       lister: vi.fn().mockReturnValue(of([])),
       statutAnalyse: vi.fn().mockReturnValue(of(STATUT_EN_ATTENTE)),
       lancerAnalyse: vi.fn().mockReturnValue(of({ examenId: 1, statut: 'EN_COURS' })),
+      validerStatut: vi.fn().mockReturnValue(of({ ...DETECTION, statut: 'ACCEPTEE', validateurEmail: 'radio@test.com' })),
     };
     detectionMasqueStore = {
       clearAll: vi.fn(),
@@ -319,6 +322,33 @@ describe('ExamenDetail', () => {
       (b) => (b as HTMLButtonElement).textContent?.trim() === "Lancer l'analyse IA"
     ) as HTMLButtonElement;
     expect(bouton.disabled).toBe(false);
+  });
+
+  it('peutValider est vrai pour un RADIOLOGUE', async () => {
+    const fixture = await createFixture();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance['peutValider']()).toBe(true);
+  });
+
+  it('peutValider est faux pour un TECHNICIEN', async () => {
+    authService = { currentUser: signal({ email: 'tech@test.com', role: 'TECHNICIEN', exp: 9999999999 }) };
+    const fixture = await createFixture();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance['peutValider']()).toBe(false);
+  });
+
+  it('onValiderDetection met à jour la détection correspondante avec la réponse du service', async () => {
+    (detectionService.lister as ReturnType<typeof vi.fn>).mockReturnValue(of([DETECTION]));
+    const fixture = await createFixture();
+    fixture.detectChanges();
+
+    fixture.componentInstance['onValiderDetection']({ detectionId: 1, statut: 'ACCEPTEE' });
+
+    expect(detectionService.validerStatut).toHaveBeenCalledWith(1, 1, 'ACCEPTEE');
+    expect(fixture.componentInstance['detections']()[0].statut).toBe('ACCEPTEE');
+    expect(fixture.componentInstance['detections']()[0].validateurEmail).toBe('radio@test.com');
   });
 
   it('un échec 409 affiche qu\'une analyse est déjà en cours', async () => {

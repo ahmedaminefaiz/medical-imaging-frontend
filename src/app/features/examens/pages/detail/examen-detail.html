@@ -111,7 +111,9 @@
         [images]="ex.images"
         [indexInitial]="imageOuverteIndex()!"
         [detections]="detections()"
+        [peutValider]="peutValider()"
         (fermer)="onFermerViewer()"
+        (validerDetection)="onValiderDetection($event)"
       />
     }
   }

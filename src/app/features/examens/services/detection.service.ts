@@ -28,4 +28,11 @@ export class DetectionService {
   statutAnalyse(examenId: number): Observable<AnalyseStatutResponse> {
     return this.http.get<AnalyseStatutResponse>(`${environment.apiUrl}/v1/examens/${examenId}/detections/statut`);
   }
+
+  validerStatut(examenId: number, detectionId: number, statut: 'ACCEPTEE' | 'REJETEE'): Observable<Detection> {
+    return this.http.patch<Detection>(
+      `${environment.apiUrl}/v1/examens/${examenId}/detections/${detectionId}/statut`,
+      { statut }
+    );
+  }
 }
